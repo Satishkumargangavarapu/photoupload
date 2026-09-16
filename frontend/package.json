@@ -1,0 +1,10 @@
+{
+  "name": "event-gallery-frontend",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": { "dev": "vite", "build": "tsc -b && vite build" },
+  "dependencies": { "@vitejs/plugin-react": "latest", "vite": "latest", "typescript": "latest", "react": "latest", "react-dom": "latest", "react-router-dom": "latest" },
+  "devDependencies": { "tailwindcss": "latest", "@tailwindcss/vite": "latest", "@types/react": "latest", "@types/react-dom": "latest" }
+}
+
