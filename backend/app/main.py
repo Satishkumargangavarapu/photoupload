@@ -118,9 +118,14 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Event Gallery API", version="2.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+allowed_origins = [
+    origin.strip()
+    for origin in get_settings().frontend_origin.split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[get_settings().frontend_origin],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
