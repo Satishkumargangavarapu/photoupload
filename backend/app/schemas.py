@@ -84,11 +84,11 @@ class ManagerSummaryOut(BaseModel):
 
 class GalleryIn(BaseModel):
     photo_ids: list[str] = Field(default_factory=list)
-    pin: str = Field(min_length=4, max_length=32)
+    pin: str = Field(pattern=r"^\d{4}$")
 
 
 class ShareLinkIn(BaseModel):
-    pin: str = Field(min_length=4, max_length=8, pattern=r"^\d{4,8}$")
+    pin: str = Field(pattern=r"^\d{4}$")
     photo_ids: list[str] | None = None
 
 
@@ -104,7 +104,7 @@ class ShareInfoOut(BaseModel):
 
 
 class PinIn(BaseModel):
-    pin: str
+    pin: str = Field(pattern=r"^\d{4}$")
 
 
 class ActivityOut(BaseModel):

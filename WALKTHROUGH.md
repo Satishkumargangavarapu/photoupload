@@ -16,19 +16,16 @@
 
 ---
 
-### 3. Role-Based Gallery Publishing & 4–8 Digit Access PIN (e.g. 482917)
+### 3. Role-Based Gallery Publishing & 4-Digit Access PIN
 - **Role Isolation Enforced**:
-  - **Admin / Event Manager Only**: Consolidate uploaded photos, select specific photos for sharing (or all), generate shareable links, and publish galleries.
-  - **Team Members Restricted**: Assigned team members focus on multi-photo uploads and reviewing their contributions. Attempting to generate share links or publish galleries is blocked at the API level (`HTTP 403 Forbidden`).
-- **Flexible 4–8 Digit PIN Support**:
-  - Supports standard 4-digit PINs (e.g. `1234`) as well as 6-digit PINs (e.g. `482917` from the specification operational state).
-  - Quick buttons for both **6-Digit** and **4-Digit** secure random PIN generation in the Admin workspace.
+  - **Event Managers and Assigned Team Members**: Authorized event participants can generate or update shareable links, optionally select specific photos, and publish galleries.
+  - **Exact 4-Digit PIN Support**: Share links and public access accept four numeric digits only, with a random PIN generator in both workspaces.
 - **Immediate Publishing & Quick Copy Actions**:
   - **Copy Share Link**: Copies the gallery URL (`/gallery/:slug`) to clipboard.
-  - **Copy Full Invite Message**: Copies `"View photos from [Event Name]: http://.../gallery/:slug \nAccess PIN: 482917"`.
+  - **Copy Full Invite Message**: Copies the gallery URL and its four-digit PIN.
 - **Zero Friction for Guests**:
   - Customers/guests access `/gallery/:slug` without creating an account.
-  - Enter the access PIN (e.g. `482917`), browse curated photos, preview in high-resolution Lightbox, and download images.
+  - Enter the four-digit access PIN, browse photos, preview in high-resolution Lightbox, and download images.
 
 ---
 
@@ -50,22 +47,21 @@
 
 | File | Changes |
 | :--- | :--- |
-| [`backend/app/main.py`](file:///c:/Users/HP/Documents/ChatGPT/photoupload/backend/app/main.py) | Enforced `event_manager` / `super_admin` role checks on `POST /events/{id}/share-link` and `PATCH /galleries/{id}/publish` (blocking team members with `403 Forbidden`). |
-| [`backend/app/schemas.py`](file:///c:/Users/HP/Documents/ChatGPT/photoupload/backend/app/schemas.py) | Updated `ShareLinkIn` to support 4–8 digit PINs (`^\d{4,8}$`), supporting 6-digit PINs like `482917`. |
-| [`backend/tests/test_requirements.py`](file:///c:/Users/HP/Documents/ChatGPT/photoupload/backend/tests/test_requirements.py) | Added regression tests verifying team member publish rejection (`403 Forbidden`) and 6-digit PIN gallery unlocking (`482917`). |
-| [`frontend/src/main.tsx`](file:///c:/Users/HP/Documents/ChatGPT/photoupload/frontend/src/main.tsx) | Updated `EventManager` to support 4–8 digit PINs with 6-digit/4-digit random generators; updated `Upload` to present clean photographer portal with read-only gallery status; updated `PublicGallery` PIN unlock to support 4–8 digit PINs. |
+| [`backend/app/main.py`](file:///c:/Users/HP/Documents/ChatGPT/photoupload/backend/app/main.py) | Allows event participants to manage share links and builds generated URLs from the configured public frontend URL. |
+| [`backend/app/schemas.py`](file:///c:/Users/HP/Documents/ChatGPT/photoupload/backend/app/schemas.py) | Enforces exact four-digit PINs for share creation and guest access. |
+| [`frontend/src/main.tsx`](file:///c:/Users/HP/Documents/ChatGPT/photoupload/frontend/src/main.tsx) | Adds four-digit share controls for team members and validates public gallery access. |
 
 ---
 
 ## 3. Verification & Testing Instructions
 
 1. **Verify Role Isolation (Admin vs. Team Member)**:
-   - Sign in as an Event Manager. Go to an event workspace, select photos, set a 6-digit PIN (e.g. `482917`), and click **Publish Gallery & Generate Link**.
+  - Sign in as an Event Manager or assigned Team Member. Go to an event workspace, select photos if needed, set a four-digit PIN, and generate the share link.
    - Sign in as a Team Member assigned to the event. Notice the workspace provides multi-photo upload and contribution metrics, while gallery publishing controls are strictly reserved for the Admin.
-2. **Verify 6-Digit PIN Guest Access**:
+2. **Verify Four-Digit PIN Guest Access**:
    - Open a private/incognito browser window.
    - Navigate to the generated gallery link (`http://localhost:5173/gallery/:slug`).
-   - Enter `482917`.
+  - Enter the configured four-digit PIN.
    - The gallery unlocks immediately, showing the curated event photos with Lightbox preview and downloads.
 3. **Verify Automated Tests**:
    - Run `pytest` in `backend/` to verify all regression tests pass (including `test_team_member_cannot_publish_gallery_or_generate_share_link` and `test_gallery_supports_six_digit_pin`).

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
     frontend_origin: str = "http://localhost:5173"
+    public_frontend_url: str = ""
     # Create the first privileged account only from deployment environment variables.
     super_admin_email: str = ""
     super_admin_password: str = ""

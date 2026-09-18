@@ -123,6 +123,13 @@ allowed_origins = [
     for origin in get_settings().frontend_origin.split(",")
     if origin.strip()
 ]
+
+
+def public_frontend_url() -> str:
+    settings = get_settings()
+    return (settings.public_frontend_url or allowed_origins[0]).rstrip("/")
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -704,7 +711,7 @@ async def get_event_gallery(event_id: str, user=Depends(current_user)):
     photo_count = len(gallery.get("photo_ids", []))
     if photo_count == 0:
         photo_count = await db.photos.count_documents({"event_id": event_id})
-    frontend_origin = get_settings().frontend_origin.rstrip("/")
+    frontend_origin = public_frontend_url()
     created_str = (
         gallery["published_at"].isoformat()
         if gallery.get("published_at")
@@ -715,7 +722,7 @@ async def get_event_gallery(event_id: str, user=Depends(current_user)):
         "event_id": event_id,
         "slug": gallery["slug"],
         "share_url": f"{frontend_origin}/gallery/{gallery['slug']}",
-        "pin": gallery.get("plain_pin") if user["role"] in {"event_manager", "super_admin"} else None,
+        "pin": gallery.get("plain_pin"),
         "is_published": gallery.get("is_published", False),
         "photo_count": photo_count,
         "created_at": created_str,
@@ -730,12 +737,10 @@ async def create_or_update_share_link(
     user=Depends(current_user),
 ):
     """Generate or update the access PIN shareable link for an event.
-    Accessible only to Event Managers and Platform Administrators."""
-    if user["role"] not in {"event_manager", "super_admin"}:
-        raise HTTPException(403, "Only event managers can publish galleries or manage share links")
+    Accessible to the event manager, assigned team members, and platform administrators."""
+    if user["role"] not in {"event_manager", "team_member", "super_admin"}:
+        raise HTTPException(403, "Only event participants can manage share links")
     event = await event_for_user(event_id, user)
-    if user["role"] != "super_admin" and str(event.get("created_by")) != str(user.get("id")):
-        raise HTTPException(403, "Only the event lead/manager can publish this gallery")
     db = Database.get()
 
     photo_ids = getattr(payload, "photo_ids", None) or []
@@ -792,7 +797,7 @@ async def create_or_update_share_link(
     )
 
     photo_count = len(photo_ids) if photo_ids else await db.photos.count_documents({"event_id": event_id})
-    frontend_origin = get_settings().frontend_origin.rstrip("/")
+    frontend_origin = public_frontend_url()
 
     return {
         "id": str(gallery_id),

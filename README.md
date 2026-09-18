@@ -47,9 +47,9 @@ Run `cd backend && pytest`. The suite targets registration/login, invalid creden
 ## Deployment
 
 1. Create an Atlas M0 database user and Cloudinary product environment.
-2. Deploy the API to Render using `render.yaml`; set Mongo, Cloudinary, JWT, and `FRONTEND_ORIGIN` environment variables.
-3. Import `frontend` in Vercel, build with `npm run build`, output `dist`, and set `VITE_API_URL` to the Render API.
-4. Set Render `FRONTEND_ORIGIN` to the Vercel domain.
+2. Deploy the API to Render using `render.yaml`; set `MONGODB_URI`, Cloudinary credentials, `FRONTEND_ORIGIN` (the Vercel domain, with comma-separated local origins only when needed), and `PUBLIC_FRONTEND_URL` (the single Vercel domain used in generated links). Set `SUPER_ADMIN_EMAIL` and `SUPER_ADMIN_PASSWORD` if you want the bootstrap administrator.
+3. Import the repository root in Vercel. The included `vercel.json` builds `frontend` and serves its SPA routes from `frontend/dist`.
+4. In Vercel, set `VITE_API_URL` to the Render API URL, for example `https://event-gallery-api.onrender.com`.
 
 ## Known limitations
 

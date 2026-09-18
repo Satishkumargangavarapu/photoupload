@@ -946,7 +946,7 @@ function Dashboard({ manager }: { manager: boolean }) {
                 </li>
                 <li>
                   <b>03</b>
-                  <span>{manager ? "Curate selections and publish a PIN-protected gallery." : "Your manager publishes the private gallery."}</span>
+                  <span>{manager ? "Curate selections and publish a PIN-protected gallery." : "Upload photos and share the private gallery with a four-digit PIN."}</span>
                 </li>
               </ol>
             </aside>
@@ -1147,12 +1147,8 @@ function EventManager() {
     );
   }
 
-  function generateRandomPin(digits = 6) {
-    if (digits === 4) {
-      setPin(Math.floor(1000 + Math.random() * 9000).toString());
-    } else {
-      setPin(Math.floor(100000 + Math.random() * 900000).toString());
-    }
+  function generateRandomPin() {
+    setPin(Math.floor(1000 + Math.random() * 9000).toString());
   }
 
   async function toggleMemberAssignment(member: TeamMember) {
@@ -1177,8 +1173,8 @@ function EventManager() {
   }
 
   async function generateShareLink() {
-    if (!pin || pin.length < 4 || pin.length > 8 || !/^\d{4,8}$/.test(pin)) {
-      setError("Please specify a 4 to 8-digit access PIN code (e.g. 482917)");
+    if (!/^\d{4}$/.test(pin)) {
+      setError("Please specify an exact 4-digit access PIN code (e.g. 4829)");
       return;
     }
     setBusy(true);
@@ -1348,7 +1344,7 @@ function EventManager() {
                 </div>
 
                 <p className="mt-2 text-xs text-slate-500">
-                  Generate a private shareable link protected by an access PIN (4–8 digits, e.g. 482917). Guests enter this PIN to unlock and view photos.
+                  Generate a private shareable link protected by an exact 4-digit PIN. Guests enter this PIN to unlock and view photos.
                 </p>
 
                 {gallery ? (
@@ -1391,31 +1387,23 @@ function EventManager() {
                 {/* PIN INPUT / UPDATE FORM */}
                 <div className="mt-4 pt-3 border-t border-slate-100">
                   <label className="field-label">
-                    <span>{gallery ? "Update Access PIN (4–8 Digits)" : "Set Access PIN (4–8 Digits)"}</span>
+                    <span>{gallery ? "Update Access PIN (4 Digits)" : "Set Access PIN (4 Digits)"}</span>
                     <div className="flex gap-2">
                       <input
                         value={pin}
                         onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 4);
                           setPin(val);
                         }}
-                        placeholder="e.g. 482917"
-                        maxLength={8}
+                        placeholder="e.g. 4829"
+                        maxLength={4}
                         inputMode="numeric"
-                        pattern="\d{4,8}"
+                        pattern="\d{4}"
                         className="font-mono text-center tracking-[.3em] font-bold text-slate-800"
                       />
                       <button
                         type="button"
-                        onClick={() => generateRandomPin(6)}
-                        className="btn-secondary text-xs px-2.5 shrink-0"
-                        title="Generate 6-digit PIN"
-                      >
-                        6-Digit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => generateRandomPin(4)}
+                        onClick={generateRandomPin}
                         className="btn-secondary text-xs px-2.5 shrink-0"
                         title="Generate 4-digit PIN"
                       >
@@ -1426,7 +1414,7 @@ function EventManager() {
 
                   <button
                     className="btn-primary mt-3 w-full"
-                    disabled={pin.length < 4 || pin.length > 8 || busy}
+                    disabled={pin.length !== 4 || busy}
                     onClick={generateShareLink}
                   >
                     {busy ? "Saving…" : gallery ? "Update PIN & Share Link" : "Publish Gallery & Generate Link"}
@@ -1484,6 +1472,7 @@ function Upload() {
   const [allPhotos, setAllPhotos] = useState<Photo[]>([]);
   const [myPhotos, setMyPhotos] = useState<Photo[]>([]);
   const [gallery, setGallery] = useState<ShareInfo | null>(null);
+  const [pin, setPin] = useState("");
   const [activities, setActivities] = useState<Activity[]>([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -1500,7 +1489,10 @@ function Upload() {
     request(`/events/${id}/photos?mine=true`).then(setMyPhotos).catch(() => {});
     request(`/events/${id}/gallery`)
       .then((res: ShareInfo | null) => {
-        if (res) setGallery(res);
+        if (res) {
+          setGallery(res);
+          if (res.pin) setPin(res.pin);
+        }
       })
       .catch(() => {});
     request(`/activities?event_id=${id}`).then(setActivities).catch(() => {});
@@ -1509,6 +1501,33 @@ function Upload() {
   useEffect(() => {
     load();
   }, [id]);
+
+  function generateRandomPin() {
+    setPin(Math.floor(1000 + Math.random() * 9000).toString());
+  }
+
+  async function generateShareLink() {
+    if (!/^\d{4}$/.test(pin)) {
+      setError("Please specify an exact 4-digit access PIN code (e.g. 4829)");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const result: ShareInfo = await request(`/events/${id}/share-link`, {
+        method: "POST",
+        body: JSON.stringify({ pin }),
+      });
+      setGallery(result);
+      setMessage("Share link is active and ready to send.");
+      load();
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleMultiUpload(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -1722,12 +1741,35 @@ function Upload() {
                     </div>
                   </div>
 
+                  <div className="mt-4 rounded-2xl border border-teal-200 bg-teal-50/60 p-4">
+                    <p className="text-xs font-bold text-slate-800">Share this event gallery</p>
+                    <p className="mt-1 text-xs text-slate-500">Set an exact 4-digit PIN. New uploads are included automatically.</p>
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        value={pin}
+                        onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        placeholder="4-digit PIN"
+                        maxLength={4}
+                        inputMode="numeric"
+                        pattern="\d{4}"
+                        className="min-w-0 flex-1 font-mono text-center font-bold tracking-[.25em]"
+                        aria-label="Event gallery PIN"
+                      />
+                      <button type="button" className="btn-secondary shrink-0 px-3 text-xs" onClick={generateRandomPin}>
+                        Generate PIN
+                      </button>
+                    </div>
+                    <button className="btn-primary mt-3 w-full py-2 text-xs" disabled={pin.length !== 4 || busy} onClick={generateShareLink}>
+                      {busy ? "Saving…" : gallery ? "Update Share Link" : "Generate Share Link"}
+                    </button>
+                  </div>
+
                   {/* ACTIVE SHARE LINK DETAILS IF PUBLISHED BY LEAD */}
                   {gallery?.is_published ? (
                     <div className="mt-4 rounded-2xl bg-teal-50/90 p-4 border border-teal-200">
                       <div className="flex items-center justify-between">
                         <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800">
-                          PUBLISHED BY LEAD
+                          PUBLISHED
                         </span>
                         <span className="text-xs font-bold text-slate-600">
                           {gallery.photo_count} photos curated
@@ -1749,7 +1791,7 @@ function Upload() {
                         📋 Copy Customer Link
                       </button>
                       <p className="mt-2 text-[11px] text-slate-500 text-center">
-                        Gallery PIN & curated selections are managed by your Event Lead.
+                        You can update this link and PIN whenever the event needs a new invite.
                       </p>
                     </div>
                   ) : (
@@ -1785,7 +1827,7 @@ function Upload() {
                   <ul className="mt-2 space-y-1.5 text-xs text-slate-600 list-disc list-inside">
                     <li>Upload raw & edited event photos directly to this workspace.</li>
                     <li>Switch to "My Uploads" anytime to review your uploaded photos.</li>
-                    <li>Only the Admin/Lead can curate selections and publish the gallery.</li>
+                    <li>Assigned team members can publish or update the gallery PIN for this event.</li>
                   </ul>
                 </section>
               </aside>
@@ -1842,8 +1884,8 @@ function PublicGallery() {
 
   async function access(e: FormEvent) {
     e.preventDefault();
-    if (!pin || pin.length < 4 || pin.length > 8) {
-      setError("Please enter your access PIN (4–8 digits, e.g. 482917)");
+    if (!/^\d{4}$/.test(pin)) {
+      setError("Please enter the exact 4-digit access PIN");
       return;
     }
     setError("");
@@ -1954,7 +1996,7 @@ function PublicGallery() {
         <p className="mt-7 text-xs font-bold tracking-[.18em] text-teal-700">PRIVATE GUEST REVEAL</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">Your Gallery is Ready</h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
-          Enter the access PIN provided by your event photographer or host (e.g. 482917) to unlock your photos.
+          Enter the 4-digit access PIN provided by your event photographer or host to unlock your photos.
         </p>
 
         <form className="mt-7 grid gap-3" onSubmit={access}>
@@ -1962,17 +2004,17 @@ function PublicGallery() {
             className="text-center text-2xl tracking-[.4em] font-mono font-black text-slate-900 py-3"
             value={pin}
             onChange={(e) => {
-              const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+              const val = e.target.value.replace(/\D/g, "").slice(0, 4);
               setPin(val);
             }}
-            placeholder="••••••"
-            maxLength={8}
+            placeholder="••••"
+            maxLength={4}
             inputMode="numeric"
-            pattern="\d{4,8}"
+            pattern="\d{4}"
             aria-label="Gallery Access PIN"
             autoFocus
           />
-          <button className="btn-primary py-3 font-bold" disabled={pin.length < 4 || pin.length > 8 || busy}>
+          <button className="btn-primary py-3 font-bold" disabled={pin.length !== 4 || busy}>
             {busy ? "Unlocking…" : "Unlock Gallery"}
           </button>
         </form>
